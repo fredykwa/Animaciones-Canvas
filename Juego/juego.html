@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Twinkopoly - Tablero estilo suministrado</title>
+  <style>
+    :root{--bg:#f6f8fb;--panel:#fff;--accent:#ff6b6b;--muted:#6b7280}
+    body{font-family:Inter, system-ui, Arial;display:flex;justify-content:center;padding:18px;background:linear-gradient(180deg,#eef2ff,#f8fafc);}
+    #gameWrap{width:1000px;max-width:98vw;display:flex;gap:18px}
+    .boardCard{background:var(--panel);padding:14px;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,0.08);}
+    canvas{background:#fff;border-radius:10px;border:6px solid #0f172a00;display:block}
+    .sidebar{width:340px;display:flex;flex-direction:column;gap:12px}
+    .card{background:#fff;padding:12px;border-radius:10px;border:1px solid #eef2ff}
+    h2{margin:0 0 8px 0;font-size:16px}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+    .smallbtn{background:#eef6ff;color:#0369a1;border:1px solid #dbeafe;padding:6px 8px}
+    .players-list{display:flex;flex-direction:column;gap:6px}
+    .log{height:220px;overflow:auto;font-size:13px;background:#fbfeff;padding:8px;border-radius:6px;border:1px solid #eef8ff}
+    .legend{display:flex;gap:8px;flex-wrap:wrap}
+    .legend .item{background:#fff;padding:6px 8px;border-radius:6px;border:1px solid #eef2ff;font-size:13px}
+  </style>
+</head>
+<body>
+  <div id="gameWrap">
+    <div class="boardCard">
+      <canvas id="board" width="760" height="760"></canvas>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>Twinkopoly — Panel</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label>Jugadores:</label>
+          <select id="playerCount">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+          </select>
+          <button id="newGame" class="smallbtn">Nuevo juego</button>
+        </div>
+        <div style="margin-top:8px">Turno: <strong id="turnDisplay">-</strong></div>
+      </div>
+
+      <div class="card">
+        <h2>Controles</h2>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button id="rollDice">Tirar dados</button>
+          <button id="endTurn" class="smallbtn">Terminar turno</button>
+        </div>
+        <div>Dados: <span id="diceDisplay">-</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Jugadores</h2>
+        <div class="players-list" id="playersList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Info casilla</h2>
+        <div id="propInfo">Haz clic en una casilla del tablero para ver su contenido y acción.</div>
+      </div>
+
+      <div class="card">
+        <h2>Registro</h2>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card">
+        <h2>Leyenda</h2>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// --- Carga del tablero provisto (véase PDF entregado por el usuario). ---
+// Referencia al PDF subido: fileciteturn1file0
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const outer = 12; // margen
+const grid = 8;   // casillas por lado visual (usaremos perímetro)
+const tilesPerSide = 8; // 8 por lado -> 32 casillas en perímetro
+const totalTiles = tilesPerSide * 4;
+const innerSize = canvas.width - outer*2;
+const tileLen = innerSize / tilesPerSide;
+
+// Definimos las casillas intentando seguir el diseño y contenidos del Tablero.pdf
+// Hecho: grupos temáticos (numeración, operaciones, fracciones, proporciones, unidades, problemas, potencias, estimaciones)
+// Especiales: Avanza, Pierdes turno, Ve a descanso, Tira otra vez, ¡Premio!, ¡Reto!, Descanso matemático
+
+const tileDefs = [
+  {id:0,label:'Salida\n(¡Avanza!)',type:'start',pts:0,color:'#fef3c7'},
+  {id:1,label:'Sistema de numeración',type:'topic',pts:60,color:'#fde68a'},
+  {id:2,label:'Resolución de operaciones',type:'topic',pts:100,color:'#fcd34d'},
+  {id:3,label:'Potencia y exponentes',type:'topic',pts:160,color:'#fca5a5'},
+  {id:4,label:'Operaciones contextualizadas\nCálculo mental',type:'topic',pts:160,color:'#fda4af'},
+  {id:5,label:'Comparación fracciones/decimales',type:'topic',pts:60,color:'#c7f9cc'},
+  {id:6,label:'Comparación y ordenación',type:'topic',pts:100,color:'#86efac'},
+  {id:7,label:'Fracciones y decimales',type:'topic',pts:160,color:'#bbf7d0'},
+
+  {id:8,label:'¡Avanza al inicio!',type:'move',color:'#e0f2fe'},
+  {id:9,label:'Encuentra múltiplos (ejemplo: múltiplos de 6)',type:'topic',pts:60,color:'#ffedd5'},
+  {id:10,label:'Divisibilidad',type:'topic',pts:100,color:'#fed7aa'},
+  {id:11,label:'Problema proporcional (mapa/escala)',type:'topic',pts:160,color:'#fde68a'},
+  {id:12,label:'Problemas de consumo y dinero',type:'topic',pts:200,color:'#fbcfe8'},
+  {id:13,label:'Unidades y medidas',type:'topic',pts:100,color:'#dbeafe'},
+  {id:14,label:'Estimaciones razonadas',type:'topic',pts:60,color:'#fef3c7'},
+  {id:15,label:'¡Reto! Dado — pierde 20 TP si pierdes',type:'challenge',pts:0,color:'#ffd7d7'},
+
+  {id:16,label:'Descanso matemático\nRecibe 10 TP',type:'rest',pts:10,color:'#e6f4ff'},
+  {id:17,label:'Ordena números (decimales y fracciones)',type:'topic',pts:200,color:'#e9d5ff'},
+  {id:18,label:'Tira otra vez',type:'extra',color:'#fff7ed'},
+  {id:19,label:'Calcula porcentajes / descuentos',type:'topic',pts:260,color:'#fde68a'},
+  {id:20,label:'Problema con medidas (km → m)',type:'topic',pts:100,color:'#dbeafe'},
+  {id:21,label:'¡Premio! 10 TP de cada equipo',type:'prize',pts:10,color:'#d1fae5'},
+  {id:22,label:'Calcula potencias (cuadrados/cubos)',type:'topic',pts:200,color:'#fbcfe8'},
+  {id:23,label:'Ve a la casilla de descanso',type:'goto',target:16,color:'#e0f2fe'},
+
+  {id:24,label:'Problema con dinero (interés simple)',type:'topic',pts:260,color:'#fef3c7'},
+  {id:25,label:'Ordena y compara (0.12,0.102,0.021)',type:'topic',pts:200,color:'#e9d5ff'},
+  {id:26,label:'¡Tira otra vez!',type:'extra',color:'#fff7ed'},
+  {id:27,label:'Reto final — máxima con dado',type:'challenge',pts:0,color:'#ffd7d7'},
+  {id:28,label:'360 TP',type:'bigpts',pts:360,color:'#fde68a'},
+  {id:29,label:'400 TP',type:'bigpts',pts:400,color:'#fcd34d'},
+  {id:30,label:'Pierdes un turno',type:'penalty',color:'#fee2e2'},
+  {id:31,label:'Ve a descanso (sin cobrar)',type:'goto',target:16,color:'#e0f2fe'}
+];
+
+// estado del juego
+let players = [];
+let currentPlayer = 0;
+let dice=[0,0];
+let logEl = document.getElementById('log');
+
+function newGame(){
+  const count = parseInt(document.getElementById('playerCount').value);
+  players = [];
+  const colors = ['#ef4444','#f59e0b','#10b981','#3b82f6'];
+  for(let i=0;i<count;i++){
+    players.push({id:i,name:`Equipo ${i+1}`,pos:0,money:200,active:true,color:colors[i]});
+  }
+  writeLog('Nuevo juego cargado — tablero estilo suministrado.');
+  render(); updateUI();
+}
+
+document.getElementById('newGame').addEventListener('click',newGame);
+
+document.getElementById('rollDice').addEventListener('click',()=>{
+  const p = players[currentPlayer]; if(!p || !p.active) return writeLog('Jugador no activo.');
+  dice = [1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];
+  document.getElementById('diceDisplay').textContent = dice.join(' + ');
+  const steps = dice[0]+dice[1];
+  writeLog(`${p.name} tira ${dice[0]} y ${dice[1]} → avanza ${steps}`);
+  animateMove(p,steps,()=>{ onLanding(p); updateUI(); });
+});
+
+document.getElementById('endTurn').addEventListener('click',()=>{ endTurn(); });
+
+function endTurn(){
+  currentPlayer = (currentPlayer+1) % players.length; updateUI(); writeLog(`Turno: ${players[currentPlayer].name}`);
+}
+
+function updateUI(){
+  document.getElementById('turnDisplay').textContent = players[currentPlayer] ? players[currentPlayer].name : '-';
+  const pl = document.getElementById('playersList'); pl.innerHTML='';
+  players.forEach(p=>{ const row=document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='6px'; row.style.borderRadius='6px'; row.style.border='1px solid #f1f5f9'; row.innerHTML = `<div><strong style="color:${p.color}">●</strong> ${p.name}</div><div>${p.money} TP</div>`; pl.appendChild(row); });
+}
+
+function writeLog(txt){ const d=document.createElement('div'); d.textContent=`${new Date().toLocaleTimeString()} - ${txt}`; logEl.prepend(d); }
+
+// dibujo del tablero
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // fondo central
+  ctx.fillStyle='#ffffff'; ctx.fillRect(outer,outer,innerSize,innerSize);
+  // dibujar casillas perimetrales (0..31)
+  for(let i=0;i<totalTiles;i++){
+    const r = tileRect(i);
+    const t = tileDefs[i];
+    ctx.fillStyle = t.color || '#fff';
+    ctx.fillRect(r.x+2,r.y+2,r.w-4,r.h-4);
+    // banda superior para destacar
+    ctx.fillStyle = shadeColor(t.color||'#fff', -10);
+    ctx.fillRect(r.x+2, r.y+2, r.w-4, Math.min(28, r.h-6));
+    // texto
+    ctx.fillStyle='#0f172a'; ctx.font='12px sans-serif';
+    wrapText(ctx, t.label, r.x+6, r.y + 22, r.w-12, 14);
+    // puntos si aplican
+    if(t.pts){ ctx.fillStyle='#0f172a'; ctx.font='bold 12px sans-serif'; ctx.fillText((t.pts>0? t.pts + ' TP':''), r.x+6, r.y + r.h - 8); }
+  }
+  // centro decoración (título + instrucciones pequeñas)
+  const c = outer + tileLen*2; const cs = innerSize - tileLen*4;
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(c,c,cs,cs);
+  ctx.fillStyle='#111827'; ctx.font='24px sans-serif'; ctx.fillText('TWINKOPOLY', c+24, c+48);
+  ctx.font='12px sans-serif'; ctx.fillText('Tablero inspirado en el PDF compartido', c+24, c+72);
+  // dibujar jugadores
+  players.forEach((p,idx)=>{
+    const r = tileRect(p.pos%totalTiles);
+    const cx = r.x + r.w/2 + (idx*14 - (players.length-1)*7);
+    const cy = r.y + r.h/2;
+    ctx.beginPath(); ctx.fillStyle = p.color; ctx.arc(cx,cy,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='10px sans-serif'; ctx.fillText(idx+1, cx-4, cy+4);
+  });
+}
+
+function tileRect(i){
+  // posición alrededor del perímetro: 0..7 bottom left->right, 8..15 right bottom->top, 16..23 top right->left, 24..31 left top->bottom
+  const ix = i;
+  const innerX = outer; const innerY = outer; const w = innerSize; const h = innerSize; const step = tileLen;
+  if(ix<tilesPerSide){ // bottom
+    return {x: innerX + ix*step, y: innerY + h - step, w: step, h: step};
+  } else if(ix<tilesPerSide*2){ const j=ix-tilesPerSide; return {x: innerX + w - step, y: innerY + h - (j+1)*step, w: step, h: step};
+  } else if(ix<tilesPerSide*3){ const j=ix-tilesPerSide*2; return {x: innerX + w - (j+1)*step, y: innerY, w: step, h: step};
+  } else { const j=ix-tilesPerSide*3; return {x: innerX, y: innerY + j*step, w: step, h: step}; }
+}
+
+function shadeColor(col, percent) {
+  // simple shade for hex
+  if(!col) return col; try{
+    const f=col.slice(1); const t=percent<0?0:255; const p=Math.abs(percent)/100; const R=parseInt(f.substring(0,2),16), G=parseInt(f.substring(2,4),16), B=parseInt(f.substring(4,6),16);
+    const newR=Math.round((t-R)*p)+R; const newG=Math.round((t-G)*p)+G; const newB=Math.round((t-B)*p)+B;
+    return '#'+(newR.toString(16).padStart(2,'0'))+(newG.toString(16).padStart(2,'0'))+(newB.toString(16).padStart(2,'0'));
+  }catch(e){return col}
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(/\s+/); let line=''; let ty=y;
+  for(let n=0;n<words.length;n++){
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine); const testWidth = metrics.width;
+    if(testWidth > maxWidth && n>0){ ctx.fillText(line, x, ty); line = words[n] + ' '; ty += lineHeight; }
+    else { line = testLine; }
+  }
+  if(line) ctx.fillText(line, x, ty);
+}
+
+// animación simple de movimiento
+function animateMove(player,steps,cb){
+  let rem = steps; const delay=220;
+  function s(){ if(rem<=0){ render(); if(cb) cb(); return; } player.pos = (player.pos+1)%totalTiles; rem--; render(); setTimeout(s,delay); }
+  s();
+}
+
+canvas.addEventListener('click',(ev)=>{
+  const rect = canvas.getBoundingClientRect(); const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
+  for(let i=0;i<tileDefs.length;i++){ const r=tileRect(i); if(x>=r.x && x<=r.x+r.w && y>=r.y && y<=r.y+r.h){ showTile(i); break; } }
+});
+
+function showTile(i){ const t = tileDefs[i]; const info = document.getElementById('propInfo');
+  let html = `<strong>${t.label}</strong><div style=\"margin-top:6px\">Tipo: ${t.type}</div>`;
+  if(t.pts) html += `<div>Puntos: <strong>${t.pts} TP</strong></div>`;
+  if(t.type==='goto') html += `<div><button onclick=\"goTo(${t.target})\">Ir a casilla de descanso</button></div>`;
+  if(t.type==='topic') html += `<div style=\"margin-top:8px\"><button onclick=\"askQuestion(${i})\">Responder pregunta (ganar puntos)</button></div>`;
+  if(t.type==='rest') html += `<div style=\"margin-top:8px\">Descansa y recibe ${t.pts} TP.</div>`;
+  if(t.type==='challenge' || t.type==='prize') html += `<div style=\"margin-top:8px\">Acción especial. Lee el enunciado del tablero.</div>`;
+  info.innerHTML = html;
+}
+
+function goTo(target){ const p = players[currentPlayer]; p.pos = target; writeLog(`${p.name} va a la casilla ${target}`); render(); updateUI(); }
+
+// preguntas simples por tipo (se puede extender)
+function askQuestion(index){ const tile = tileDefs[index]; const p = players[currentPlayer]; if(!p) return; const q = makeQuestionForTile(tile);
+  const ans = prompt(`${p.name} responde:\n${q.text}`);
+  if(ans===null) { writeLog('Pregunta cancelada.'); return; }
+  if(String(q.answer) === String(ans).trim()){ p.money += (tile.pts || 50); writeLog(`${p.name} respondió bien y gana ${(tile.pts||50)} TP.`); } else { writeLog(`${p.name} respondió mal. Respuesta correcta: ${q.answer}`); }
+  render(); updateUI();
+}
+
+function makeQuestionForTile(tile){ // retorna {text,answer}
+  // simplificado: preguntas por tema clave (fracciones, decimales, porcentajes, potencias, divisibilidad, conversiones)
+  if(/fraccion|decimal/i.test(tile.label)){
+    const a=Math.floor(Math.random()*8)+1; const b= Math.floor(Math.random()*8)+1; return {text:`Convierte ${a}/${b} a decimal (2 decimales).`, answer:(a/b).toFixed(2)};
+  }
+  if(/poten|cuadrado|cubo|exponent/i.test(tile.label)){
+    const a=2+Math.floor(Math.random()*6); const exp = Math.random()>0.5?2:3; return {text:`Calcula ${a}^${exp}.`, answer: Math.pow(a,exp)};
+  }
+  if(/porcent|descuento|%/i.test(tile.label)){
+    const n=50+Math.floor(Math.random()*151); const p=5+Math.floor(Math.random()*45); return {text:`¿Cuál es el ${p}% de ${n}?`, answer: Math.round(n*p/100)};
+  }
+  if(/medid|km|m|metros/i.test(tile.label)){
+    const km = (Math.floor(Math.random()*9)+1)+Math.floor(Math.random()*10)/10; return {text:`Convierte ${km} km a metros.`, answer: Math.round(km*1000)};
+  }
+  if(/orden|comparaci/i.test(tile.label)){
+    const arr = [0.12,0.102,0.021]; return {text:`Ordena los números de menor a mayor: 0.12, 0.102, 0.021. Escribe la secuencia separada por comas.`, answer:'0.021,0.102,0.12'};
+  }
+  // default operación simple
+  const a=1+Math.floor(Math.random()*20), b=1+Math.floor(Math.random()*12); return {text:`Resuelve: ${a} + ${b}`, answer: a+b};
+}
+
+function onLanding(player){ const t = tileDefs[player.pos%tileDefs.length];
+  if(t.type==='start'){ writeLog(`${player.name} llegó a la salida.`); }
+  else if(t.type==='topic'){ writeLog(`${player.name} cayó en tema: ${t.label}`); }
+  else if(t.type==='prize'){ players.forEach(pl=>{ if(pl.id!==player.id){ pl.money -= t.pts; player.money += t.pts; } }); writeLog(`${player.name} recibe ${t.pts} TP de cada equipo.`); }
+  else if(t.type==='rest'){ player.money += t.pts; writeLog(`${player.name} descansa y gana ${t.pts} TP.`); }
+  else if(t.type==='extra'){ writeLog(`${player.name} obtiene acción extra: Tira otra vez.`); }
+  else if(t.type==='challenge'){ writeLog(`${player.name} enfrenta un reto (ver instrucciones del tablero).`); }
+  else if(t.type==='goto'){ player.pos = t.target; writeLog(`${player.name} va a la casilla ${t.target}.`); }
+  else if(t.type==='penalty'){ writeLog(`${player.name} pierde un turno.`); }
+  render(); updateUI();
+}
+
+function animateMove(player,steps,cb){ let rem=steps; const delay=220; function step(){ if(rem<=0){ if(cb) cb(); return; } player.pos = (player.pos+1)%tileDefs.length; rem--; render(); setTimeout(step,delay); } step(); }
+
+// helpers
+function initLegend(){ const lg=document.getElementById('legend'); const types = [...new Set(tileDefs.map(t=>t.type))]; types.forEach(tp=>{ const d = document.createElement('div'); d.className='item'; d.textContent = tp; lg.appendChild(d); }); }
+
+// iniciar
+initLegend(); newGame(); render();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transformaciones Geométricas (con marca)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    canvas {
+      border: 2px solid black;
+      background-color: #f9f9f9;
+    }
+    .btn {
+      padding: 6px 12px;
+      margin: 4px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .traslacion { background-color: #60a5fa; }   /* Azul */
+    .rotacion { background-color: #34d399; }     /* Verde */
+    .zoom { background-color: #fbbf24; }         /* Amarillo */
+    .figura { background-color: #f87171; }       /* Rojo */
+    .coordenadas { background-color: #a78bfa; }  /* Violeta */
+    .reflexion { background-color: #f472b6; }    /* Rosa */
+
+    .control-titulo {
+      font-weight: bold;
+      color: #5b21b6; /* morado oscuro */
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body class="p-6">
+  <h1 class="text-2xl font-bold mb-4 text-center">Transformaciones Geométricas</h1>
+
+  <div class="flex flex-col items-center">
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <div class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+      
+      <div>
+        <h3 class="control-titulo mb-2">Figura</h3>
+        <button class="btn figura" onclick="setFigura('cuadrado')">Cuadrado</button>
+        <button class="btn figura" onclick="setFigura('triangulo')">Triángulo</button>
+        <button class="btn figura" onclick="setFigura('rectangulo')">Rectángulo</button>
+      </div>
+
+      <div>
+        <h3 class="control-titulo mb-2">Traslación</h3>
+        <button class="btn traslacion" onclick="mover(0,-gridSize)">⬆️</button>
+        <button class="btn traslacion" onclick="mover(0,gridSize)">⬇️</button>
+        <button class="btn traslacion" onclick="mover(-gridSize,0)">⬅️</button>
+        <button class="btn traslacion" onclick="mover(gridSize,0)">➡️</button>
+      </div>
+
+      <div>
+        <h3 class="control-titulo mb-2">Rotación</h3>
+        <button class="btn rotacion" onclick="rotar(-90)">↶ 90°</button>
+        <button class="btn rotacion" onclick="rotar(90)">↷ 90°</button>
+      </div>
+
+      <div>
+        <h3 class="control-titulo mb-2">Zoom</h3>
+        <button class="btn zoom" onclick="zoom(1.2)">➕</button>
+        <button class="btn zoom" onclick="zoom(0.8)">➖</button>
+      </div>
+
+      <div>
+        <h3 class="control-titulo mb-2">Reflexión</h3>
+        <button class="btn reflexion" onclick="reflexion('x')">Eje X</button>
+        <button class="btn reflexion" onclick="reflexion('y')">Eje Y</button>
+      </div>
+
+      <div>
+        <h3 class="control-titulo mb-2">Coordenadas</h3>
+        <button class="btn coordenadas" onclick="toggleCoordenadas()">Mostrar/Ocultar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const gridSize = 25;
+    let figura = "cuadrado";
+    let puntos = [];
+    let mostrarCoords = false;
+
+    let puntosPrevios = null; // anclaje fijo
+    let movementInProgress = false;
+    let movementTimer = null;
+    const movementDebounce = 600;
+
+    function dibujarPlano() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Cuadrícula
+      ctx.strokeStyle = "#ddd";
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Ejes
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width/2,0);
+      ctx.lineTo(canvas.width/2,canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0,canvas.height/2);
+      ctx.lineTo(canvas.width,canvas.height/2);
+      ctx.stroke();
+
+      // Numeración (debajo y al lado de los ejes)
+      ctx.fillStyle = "black";
+      ctx.font = "12px Arial";
+
+      // Eje X (debajo del eje)
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        const coord = (x - canvas.width/2)/gridSize;
+        if (coord !== 0) ctx.fillText(coord, x - 5, canvas.height/2 + 15);
+      }
+
+      // Eje Y (al lado del eje)
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        const coord = (canvas.height/2 - y)/gridSize;
+        if (coord !== 0) ctx.fillText(coord, canvas.width/2 + 5, y + 3);
+      }
+
+      // ---------- DIBUJAR ANCLAJE PUNTEADO (FIXED) ----------
+      if (puntosPrevios) {
+        ctx.setLineDash([5,5]);
+        ctx.strokeStyle = "blue";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(puntosPrevios[0][0], puntosPrevios[0][1]);
+        for (let i = 1; i < puntosPrevios.length; i++) {
+          ctx.lineTo(puntosPrevios[i][0], puntosPrevios[i][1]);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.strokeStyle = "blue";
+        ctx.lineWidth = 1.2;
+        puntosPrevios.forEach(([x,y])=>{
+          ctx.beginPath();
+          ctx.arc(x,y,4,0,Math.PI*2);
+          ctx.stroke();
+        });
+
+        if (mostrarCoords) {
+          ctx.fillStyle = "gray";
+          ctx.font = "12px Arial";
+          puntosPrevios.forEach(([x,y])=>{
+            const coordX = ((x - canvas.width/2)/gridSize).toFixed(0);
+            const coordY = ((canvas.height/2 - y)/gridSize).toFixed(0);
+            ctx.fillText(`(${coordX},${coordY})`, x + 5, y - 5);
+          });
+        }
+
+        ctx.setLineDash([]);
+      }
+
+      // Dibujar figura sólida
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "red";
+      ctx.fillStyle = "rgba(255,0,0,0.2)";
+      ctx.beginPath();
+      ctx.moveTo(puntos[0][0], puntos[0][1]);
+      for (let i = 1; i < puntos.length; i++) {
+        ctx.lineTo(puntos[i][0], puntos[i][1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      if (mostrarCoords) {
+        ctx.fillStyle = "blue";
+        ctx.font = "12px Arial";
+        puntos.forEach(([x,y])=>{
+          const coordX = ((x - canvas.width/2)/gridSize).toFixed(0);
+          const coordY = ((canvas.height/2 - y)/gridSize).toFixed(0);
+          ctx.fillText(`(${coordX},${coordY})`, x + 5, y - 5);
+        });
+      }
+
+      // ---------- MARCA DE AGUA (texto) ----------
+      const text = "Profe Digital Kwa";
+      ctx.font = "bold 16px Arial";
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; // semitransparente
+      ctx.textAlign = "right";
+      ctx.textBaseline = "top";
+      ctx.fillText(text, canvas.width - 10, 10);
+    }
+
+    function ajustarAGrid(x,y){
+      return [Math.round(x/gridSize)*gridSize, Math.round(y/gridSize)*gridSize];
+    }
+
+    function setFigura(tipo){
+      figura = tipo;
+      const cx = canvas.width/2, cy = canvas.height/2;
+      puntosPrevios = null;
+      movementClearTimer();
+      movementInProgress = false;
+
+      if(tipo==="cuadrado"){
+        puntos=[
+          ajustarAGrid(cx-2*gridSize, cy-2*gridSize),
+          ajustarAGrid(cx+2*gridSize, cy-2*gridSize),
+          ajustarAGrid(cx+2*gridSize, cy+2*gridSize),
+          ajustarAGrid(cx-2*gridSize, cy+2*gridSize)
+        ];
+      } else if(tipo==="triangulo"){
+        puntos=[
+          ajustarAGrid(cx, cy-3*gridSize),
+          ajustarAGrid(cx-3*gridSize, cy+3*gridSize),
+          ajustarAGrid(cx+3*gridSize, cy+3*gridSize)
+        ];
+      } else if(tipo==="rectangulo"){
+        puntos=[
+          ajustarAGrid(cx-4*gridSize, cy-2*gridSize),
+          ajustarAGrid(cx+4*gridSize, cy-2*gridSize),
+          ajustarAGrid(cx+4*gridSize, cy+2*gridSize),
+          ajustarAGrid(cx-4*gridSize, cy+2*gridSize)
+        ];
+      }
+      dibujarPlano();
+    }
+
+    function movementClearTimer(){
+      if(movementTimer){ clearTimeout(movementTimer); movementTimer = null; }
+    }
+
+    function mover(dx,dy){
+      if (!movementInProgress) {
+        puntosPrevios = JSON.parse(JSON.stringify(puntos));
+        movementInProgress = true;
+      }
+      puntos = puntos.map(([x,y])=>[x+dx, y+dy]);
+      movementClearTimer();
+      movementTimer = setTimeout(()=>{
+        movementInProgress = false;
+        movementTimer = null;
+      }, movementDebounce);
+      dibujarPlano();
+    }
+
+    function rotar(angulo){
+      movementClearTimer();
+      movementInProgress = false;
+      puntosPrevios = null;
+      const rad = angulo * Math.PI/180;
+      const cx = canvas.width/2, cy = canvas.height/2;
+      puntos = puntos.map(([x,y])=>{
+        const dx = x - cx, dy = y - cy;
+        return ajustarAGrid(
+          cx + dx*Math.cos(rad) - dy*Math.sin(rad),
+          cy + dx*Math.sin(rad) + dy*Math.cos(rad)
+        );
+      });
+      dibujarPlano();
+    }
+
+    function zoom(factor){
+      movementClearTimer();
+      movementInProgress = false;
+      puntosPrevios = null;
+      const cx = canvas.width/2, cy = canvas.height/2;
+      puntos = puntos.map(([x,y])=>[cx + (x-cx)*factor, cy + (y-cy)*factor]);
+      puntos = puntos.map(([x,y])=>ajustarAGrid(x,y));
+      dibujarPlano();
+    }
+
+    function reflexion(eje){
+      movementClearTimer();
+      movementInProgress = false;
+      puntosPrevios = JSON.parse(JSON.stringify(puntos));
+      const cx = canvas.width/2, cy = canvas.height/2;
+      if (eje === "x") {
+        puntos = puntos.map(([x,y])=>ajustarAGrid(x, 2*cy - y));
+      } else if (eje === "y") {
+        puntos = puntos.map(([x,y])=>ajustarAGrid(2*cx - x, y));
+      }
+      dibujarPlano();
+    }
+
+    function toggleCoordenadas(){
+      mostrarCoords = !mostrarCoords;
+      dibujarPlano();
+    }
+
+    setFigura("cuadrado");
+  </script>
+</body>
+</html>

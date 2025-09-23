@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Péndulos Interactivo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .header-logo {
+            position: relative;
+            left: 540px;
+            bottom: 120px;
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            margin-bottom: -60px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            width: 300px;
+            height: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 1.2rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .control-item {
+            margin-bottom: 15px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .value-display {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+            margin-top: 3px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .simulation-area {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            min-width: 200px;
+        }
+
+        .pendulum-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .pendulum-btn {
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: transparent;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pendulum-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+        }
+
+        .formula-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            max-width: 280px;
+            color: white;
+            font-family: 'Courier New', monospace;
+        }
+
+        .formula-panel h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .formula-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .formula-main, .formula-substitution, .formula-result {
+            font-size: 1.1rem;
+            text-align: center;
+            margin: 8px 0;
+            font-weight: bold;
+        }
+
+        .formula-main {
+            color: #FFD700;
+            font-size: 1.3rem;
+        }
+
+        .formula-substitution {
+            color: #87CEEB;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 10px;
+        }
+
+        .formula-result {
+            color: #98FB98;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 8px;
+            font-size: 1.1rem;
+        }
+
+        .fraction {
+            position: relative;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 5px;
+        }
+
+        .numerator {
+            display: block;
+            text-align: center;
+            border-bottom: 2px solid currentColor;
+            padding-bottom: 2px;
+            font-size: 0.9em;
+        }
+
+        .denominator {
+            display: block;
+            text-align: center;
+            padding-top: 2px;
+            font-size: 0.9em;
+        }
+
+        .formula-legend {
+            font-size: 0.75rem;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .formula-legend div {
+            margin: 3px 0;
+            color: #E0E0E0;
+        }
+
+        .formula-note {
+            font-size: 0.7rem;
+            color: #FFA500;
+            background: rgba(255, 165, 0, 0.1);
+            padding: 6px;
+            border-radius: 5px;
+            border-left: 3px solid #FFA500;
+        }
+
+        #formula-length, #formula-gravity, #formula-period {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        #formula-length {
+            color: #FFB6C1;
+        }
+
+        #formula-gravity {
+            color: #98FB98;
+        }
+
+        #formula-period {
+            color: #87CEEB;
+        }
+
+        .control-buttons {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .control-buttons .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-buttons .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .brand-watermark {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 5;
+            transition: all 0.3s ease;
+        }
+
+        .brand-watermark:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.05);
+        }
+
+        .brand-watermark.bottom-left {
+            bottom: 80px;
+            left: 20px;
+        }
+
+        .brand-watermark.bottom-right {
+            bottom: 80px;
+            right: 160px;
+        }
+
+        .brand-watermark.top-left {
+            top: 80px;
+            left: 20px;
+        }
+
+        .brand-watermark.top-right {
+            top: 80px;
+            right: 160px;
+        }
+
+        .brand-logo {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .controls {
+                width: 100%;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header-logo {
+                width: 40px;
+                height: 40px;
+                right: 15px;
+                top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Simulador de Péndulos</h1>
+        <p>Experimenta con la física de péndulos simples y compuestos</p>
+        <img class="header-logo" src="https://drive.google.com/uc?id=1SNPeMuJzu1DOjQLZfXOiOOCsIbaJFV3R" alt="Tu Logo" onerror="this.style.display='none'; console.log('Logo no se pudo cargar');">
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <h3>Tipo de Péndulo</h3>
+                <div class="pendulum-selector">
+                    <button class="pendulum-btn active" onclick="setPendulumType('simple')">Simple</button>
+                    <button class="pendulum-btn" onclick="setPendulumType('compound')">Compuesto</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Péndulo Principal</h3>
+                <div class="control-item">
+                    <label>Longitud (m)</label>
+                    <input type="range" id="length1" min="50" max="300" value="200" oninput="updatePendulum()">
+                    <div class="value-display" id="length1-value">2.0 m</div>
+                </div>
+                <div class="control-item">
+                    <label>Masa (kg)</label>
+                    <input type="range" id="mass1" min="1" max="20" value="5" oninput="updatePendulum()">
+                    <div class="value-display" id="mass1-value">5 kg</div>
+                </div>
+                <div class="control-item">
+                    <label>Ángulo Inicial (°)</label>
+                    <input type="range" id="angle1" min="-90" max="90" value="45" oninput="updatePendulum()">
+                    <div class="value-display" id="angle1-value">45°</div>
+                </div>
+            </div>
+
+            <div class="control-group" id="pendulum2-controls" style="display: none;">
+                <h3>Péndulo Secundario</h3>
+                <div class="control-item">
+                    <label>Longitud (m)</label>
+                    <input type="range" id="length2" min="50" max="200" value="150" oninput="updatePendulum()">
+                    <div class="value-display" id="length2-value">1.5 m</div>
+                </div>
+                <div class="control-item">
+                    <label>Masa (kg)</label>
+                    <input type="range" id="mass2" min="1" max="15" value="3" oninput="updatePendulum()">
+                    <div class="value-display" id="mass2-value">3 kg</div>
+                </div>
+                <div class="control-item">
+                    <label>Ángulo Inicial (°)</label>
+                    <input type="range" id="angle2" min="-90" max="90" value="-30" oninput="updatePendulum()">
+                    <div class="value-display" id="angle2-value">-30°</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Física</h3>
+                <div class="control-item">
+                    <label>Gravedad (m/s²)</label>
+                    <input type="range" id="gravity" min="1" max="20" value="9.8" step="0.1" oninput="updatePendulum()">
+                    <div class="value-display" id="gravity-value">9.8 m/s²</div>
+                </div>
+                <div class="control-item">
+                    <label>Amortiguación</label>
+                    <input type="range" id="damping" min="0" max="0.02" value="0.001" step="0.001" oninput="updatePendulum()">
+                    <div class="value-display" id="damping-value">0.001</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="simulation-area">
+            <canvas id="canvas"></canvas>
+            <div class="info-panel">
+                <div><strong>Período:</strong> <span id="period">0.0s</span></div>
+                <div><strong>Energía:</strong> <span id="energy">0.0J</span></div>
+                <div><strong>Velocidad:</strong> <span id="velocity">0.0 m/s</span></div>
+                <div><strong>FPS:</strong> <span id="fps">60</span></div>
+            </div>
+            
+            <div class="formula-panel">
+                <h3>📐 Fórmula del Período</h3>
+                <div class="formula-container">
+                    <div class="formula-main">
+                        T = 2π √<span class="fraction">
+                            <span class="numerator">L</span>
+                            <span class="denominator">g</span>
+                        </span>
+                    </div>
+                    <div class="formula-substitution">
+                        T = 2π √<span class="fraction">
+                            <span class="numerator" id="formula-length">2.0</span>
+                            <span class="denominator" id="formula-gravity">9.8</span>
+                        </span>
+                    </div>
+                    <div class="formula-result">
+                        T = <span id="formula-period">2.84</span> segundos
+                    </div>
+                </div>
+                <div class="formula-legend">
+                    <div><strong>T:</strong> Período (tiempo de una oscilación completa)</div>
+                    <div><strong>L:</strong> Longitud del péndulo (metros)</div>
+                    <div><strong>g:</strong> Aceleración gravitacional (m/s²)</div>
+                    <div><strong>π:</strong> Pi ≈ 3.14159</div>
+                </div>
+                <div class="formula-note">
+                    <em>💡 Esta fórmula es válida para ángulos pequeños (&lt;15°). Para ángulos mayores, el período real será ligeramente mayor.</em>
+                </div>
+            </div>
+            
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="startStop()">▶️ Iniciar</button>
+                <button class="btn btn-secondary" onclick="reset()">🔄 Reset</button>
+                <button class="btn btn-info" onclick="toggleTrail()">📈 Rastro</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let animationId;
+        let isRunning = false;
+        let showTrail = false;
+        let pendulumType = 'simple';
+        let trail = [];
+        let lastTime = 0;
+        let frameCount = 0;
+        let fpsTime = 0;
+
+        // Configuración del péndulo
+        let config = {
+            length1: 200,
+            mass1: 5,
+            angle1: Math.PI / 4,
+            length2: 150,
+            mass2: 3,
+            angle2: -Math.PI / 6,
+            gravity: 9.8,
+            damping: 0.001,
+            velocity1: 0,
+            velocity2: 0,
+            acceleration1: 0,
+            acceleration2: 0
+        };
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        function setPendulumType(type) {
+            pendulumType = type;
+            document.querySelectorAll('.pendulum-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const controls = document.getElementById('pendulum2-controls');
+            controls.style.display = type === 'compound' ? 'block' : 'none';
+            
+            reset();
+        }
+
+        function updatePendulum() {
+            config.length1 = parseFloat(document.getElementById('length1').value);
+            config.mass1 = parseFloat(document.getElementById('mass1').value);
+            config.angle1 = parseFloat(document.getElementById('angle1').value) * Math.PI / 180;
+            config.length2 = parseFloat(document.getElementById('length2').value);
+            config.mass2 = parseFloat(document.getElementById('mass2').value);
+            config.angle2 = parseFloat(document.getElementById('angle2').value) * Math.PI / 180;
+            config.gravity = parseFloat(document.getElementById('gravity').value);
+            config.damping = parseFloat(document.getElementById('damping').value);
+
+            // Actualizar displays
+            document.getElementById('length1-value').textContent = (config.length1 / 100).toFixed(1) + ' m';
+            document.getElementById('mass1-value').textContent = config.mass1 + ' kg';
+            document.getElementById('angle1-value').textContent = Math.round(config.angle1 * 180 / Math.PI) + '°';
+            document.getElementById('length2-value').textContent = (config.length2 / 100).toFixed(1) + ' m';
+            document.getElementById('mass2-value').textContent = config.mass2 + ' kg';
+            document.getElementById('angle2-value').textContent = Math.round(config.angle2 * 180 / Math.PI) + '°';
+            document.getElementById('gravity-value').textContent = config.gravity + ' m/s²';
+            document.getElementById('damping-value').textContent = config.damping.toFixed(3);
+
+            if (!isRunning) {
+                draw();
+            }
+            
+            // Actualizar fórmula en tiempo real
+            updateFormula();
+        }
+
+        function calculateSimplePendulum(dt) {
+            const g = config.gravity * 100; // Escalar para visualización
+            const l = config.length1;
+            
+            config.acceleration1 = -(g / l) * Math.sin(config.angle1) - config.damping * config.velocity1;
+            config.velocity1 += config.acceleration1 * dt;
+            config.angle1 += config.velocity1 * dt;
+        }
+
+        function calculateCompoundPendulum(dt) {
+            const g = config.gravity * 100;
+            const l1 = config.length1;
+            const l2 = config.length2;
+            const m1 = config.mass1;
+            const m2 = config.mass2;
+            const a1 = config.angle1;
+            const a2 = config.angle2;
+            const v1 = config.velocity1;
+            const v2 = config.velocity2;
+
+            // Ecuaciones del péndulo doble (simplificadas)
+            const num1 = -m2 * l1 * v1 * v1 * Math.sin(a1 - a2) * Math.cos(a1 - a2) + 
+                         m2 * g * Math.sin(a2) * Math.cos(a1 - a2) + 
+                         m2 * l2 * v2 * v2 * Math.sin(a1 - a2) - 
+                         (m1 + m2) * g * Math.sin(a1);
+            
+            const den1 = l1 * (m1 + m2) - m2 * l1 * Math.cos(a1 - a2) * Math.cos(a1 - a2);
+            
+            const num2 = -m2 * l2 * v2 * v2 * Math.sin(a1 - a2) * Math.cos(a1 - a2) + 
+                         (m1 + m2) * g * Math.sin(a1) * Math.cos(a1 - a2) - 
+                         (m1 + m2) * l1 * v1 * v1 * Math.sin(a1 - a2) - 
+                         (m1 + m2) * g * Math.sin(a2);
+            
+            const den2 = l2 * (m1 + m2) - m2 * l2 * Math.cos(a1 - a2) * Math.cos(a1 - a2);
+
+            config.acceleration1 = num1 / den1 - config.damping * v1;
+            config.acceleration2 = num2 / den2 - config.damping * v2;
+            
+            config.velocity1 += config.acceleration1 * dt;
+            config.velocity2 += config.acceleration2 * dt;
+            config.angle1 += config.velocity1 * dt;
+            config.angle2 += config.velocity2 * dt;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Fondo con gradiente
+            const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)/2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2 + 80;
+            const centerY = 100;
+
+            // Dibujar superficie horizontal (soporte)
+            const surfaceWidth = 300;
+            const surfaceHeight = 20;
+            const surfaceX = centerX - surfaceWidth / 2;
+            const surfaceY = centerY - 30;
+
+            // Superficie principal con gradiente
+            const surfaceGradient = ctx.createLinearGradient(surfaceX, surfaceY, surfaceX, surfaceY + surfaceHeight);
+            surfaceGradient.addColorStop(0, '#8B7355');
+            surfaceGradient.addColorStop(0.3, '#A0845C');
+            surfaceGradient.addColorStop(0.7, '#6B5B47');
+            surfaceGradient.addColorStop(1, '#4A3F35');
+            
+            ctx.fillStyle = surfaceGradient;
+            ctx.fillRect(surfaceX, surfaceY, surfaceWidth, surfaceHeight);
+            
+            // Borde superior brillante
+            ctx.fillStyle = '#D4B896';
+            ctx.fillRect(surfaceX, surfaceY, surfaceWidth, 3);
+            
+            // Sombra inferior
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(surfaceX, surfaceY + surfaceHeight, surfaceWidth, 4);
+
+            // Soporte vertical (poste)
+            const postWidth = 15;
+            const postHeight = 40;
+            const postX = centerX - postWidth / 2;
+            const postY = surfaceY - postHeight;
+
+            const postGradient = ctx.createLinearGradient(postX, postY, postX + postWidth, postY);
+            postGradient.addColorStop(0, '#666');
+            postGradient.addColorStop(0.5, '#888');
+            postGradient.addColorStop(1, '#444');
+            
+            ctx.fillStyle = postGradient;
+            ctx.fillRect(postX, postY, postWidth, postHeight);
+
+            // Punto de anclaje mejorado
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Pequeño gancho o anilla
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - 2, 3, 0, Math.PI);
+            ctx.stroke();
+
+            // Dibujar rastro
+            if (showTrail && trail.length > 1) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < trail.length - 1; i++) {
+                    const alpha = i / trail.length;
+                    ctx.globalAlpha = alpha * 0.5;
+                    ctx.moveTo(trail[i].x, trail[i].y);
+                    ctx.lineTo(trail[i + 1].x, trail[i + 1].y);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+
+            if (pendulumType === 'simple') {
+                // Péndulo simple
+                const x1 = centerX + config.length1 * Math.sin(config.angle1);
+                const y1 = centerY + config.length1 * Math.cos(config.angle1);
+
+                // Cuerda
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x1, y1);
+                ctx.stroke();
+
+                // Masa
+                const radius = Math.sqrt(config.mass1) * 8;
+                ctx.fillStyle = `hsl(${(config.mass1 * 20) % 360}, 70%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(x1, y1, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Agregar al rastro
+                if (showTrail) {
+                    trail.push({x: x1, y: y1});
+                    if (trail.length > 200) trail.shift();
+                }
+
+                // Actualizar info
+                updateInfo(x1, y1, centerX, centerY);
+
+            } else {
+                // Péndulo compuesto
+                const x1 = centerX + config.length1 * Math.sin(config.angle1);
+                const y1 = centerY + config.length1 * Math.cos(config.angle1);
+                const x2 = x1 + config.length2 * Math.sin(config.angle2);
+                const y2 = y1 + config.length2 * Math.cos(config.angle2);
+
+                // Primera cuerda
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x1, y1);
+                ctx.stroke();
+
+                // Segunda cuerda
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                // Primera masa
+                const radius1 = Math.sqrt(config.mass1) * 6;
+                ctx.fillStyle = `hsl(${(config.mass1 * 20) % 360}, 70%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(x1, y1, radius1, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Segunda masa
+                const radius2 = Math.sqrt(config.mass2) * 6;
+                ctx.fillStyle = `hsl(${(config.mass2 * 30 + 120) % 360}, 70%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(x2, y2, radius2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Agregar al rastro (segunda masa)
+                if (showTrail) {
+                    trail.push({x: x2, y: y2});
+                    if (trail.length > 300) trail.shift();
+                }
+
+                // Actualizar info
+                updateInfo(x2, y2, centerX, centerY);
+            }
+        }
+
+        function updateInfo(x, y, centerX, centerY) {
+            // Calcular período teórico
+            const period = 2 * Math.PI * Math.sqrt(config.length1 / (config.gravity * 100));
+            document.getElementById('period').textContent = period.toFixed(2) + 's';
+
+            // Calcular energía (aproximada)
+            const height = (centerY + config.length1) - y;
+            const potentialEnergy = config.mass1 * config.gravity * height / 100;
+            const kineticEnergy = 0.5 * config.mass1 * Math.pow(config.velocity1 * config.length1, 2) / 10000;
+            const totalEnergy = potentialEnergy + kineticEnergy;
+            document.getElementById('energy').textContent = totalEnergy.toFixed(1) + 'J';
+
+            // Velocidad
+            const velocity = Math.abs(config.velocity1 * config.length1 / 100);
+            document.getElementById('velocity').textContent = velocity.toFixed(2) + ' m/s';
+        }
+
+        function updateFormula() {
+            // Actualizar valores en la fórmula
+            const lengthInMeters = config.length1 / 100;
+            const period = 2 * Math.PI * Math.sqrt(lengthInMeters / config.gravity);
+            
+            document.getElementById('formula-length').textContent = lengthInMeters.toFixed(1);
+            document.getElementById('formula-gravity').textContent = config.gravity.toFixed(1);
+            document.getElementById('formula-period').textContent = period.toFixed(2);
+        }
+
+        function animate(currentTime) {
+            if (!isRunning) return;
+
+            const dt = Math.min((currentTime - lastTime) / 1000, 0.016); // Limitar dt
+            lastTime = currentTime;
+
+            if (pendulumType === 'simple') {
+                calculateSimplePendulum(dt);
+            } else {
+                calculateCompoundPendulum(dt);
+            }
+
+            draw();
+
+            // Calcular FPS
+            frameCount++;
+            if (currentTime - fpsTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                fpsTime = currentTime;
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function startStop() {
+            isRunning = !isRunning;
+            const btn = event.target;
+            
+            if (isRunning) {
+                btn.textContent = '⏸️ Pausar';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+                lastTime = performance.now();
+                animationId = requestAnimationFrame(animate);
+            } else {
+                btn.textContent = '▶️ Iniciar';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function reset() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            const btn = document.querySelector('.btn-primary, .btn-secondary');
+            btn.textContent = '▶️ Iniciar';
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+            
+            config.velocity1 = 0;
+            config.velocity2 = 0;
+            config.acceleration1 = 0;
+            config.acceleration2 = 0;
+            trail = [];
+            
+            updatePendulum();
+            draw();
+        }
+
+        function toggleTrail() {
+            showTrail = !showTrail;
+            const btn = event.target;
+            btn.textContent = showTrail ? '📈 Ocultar' : '📈 Rastro';
+            
+            if (!showTrail) {
+                trail = [];
+            }
+        }
+
+        // Inicialización
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            draw();
+        });
+
+        resizeCanvas();
+        updatePendulum();
+        updateFormula();
+        draw();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97f057b0416d7b05',t:'MTc1Nzg1NzcxMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

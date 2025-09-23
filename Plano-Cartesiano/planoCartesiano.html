@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Plano Cartesiano</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #f4f4f9;
+      font-family: Arial, sans-serif;
+      flex-direction: column;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .brand {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand span.rayo {
+      color: yellow;
+    }
+
+    .brand span.texto {
+      background: linear-gradient(90deg, #6c63ff, #ff6fcf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      background: white;
+    }
+
+    .controls-bottom {
+      margin-top: 15px;
+      background: #d8b4fe;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .controls-bottom h2 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .controls-bottom .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .controls-left, .controls-right {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0 10px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #6c63ff;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #574bdb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Plano Cartesiano</h1>
+  <div class="brand">
+    <span class="rayo">⚡</span>
+    <span class="texto">Profe Digital Kwa</span>
+  </div>
+
+  <div class="container">
+    <!-- Botones izquierda -->
+    <div class="controls-left">
+      <button onclick="move(-20, 0)">←</button>
+      <button onclick="move(20, 0)">→</button>
+    </div>
+
+    <!-- Canvas en el centro -->
+    <canvas id="plano" width="600" height="600"></canvas>
+
+    <!-- Botones derecha -->
+    <div class="controls-right">
+      <button onclick="move(0, 20)">↑</button>
+      <button onclick="move(0, -20)">↓</button>
+    </div>
+  </div>
+
+  <!-- Controles debajo -->
+  <div class="controls-bottom">
+    <h2>Controladores</h2>
+    <div class="buttons">
+      <button onclick="clearPoints()">Borrar puntos</button>
+      <button onclick="undoPoint()">Deshacer punto</button>
+      <button onclick="newLine()">Nuevo punto</button>
+      <button onclick="zoomOut()">Zoom -</button>
+      <button onclick="zoomIn()">Zoom +</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("plano");
+    const ctx = canvas.getContext("2d");
+
+    let scale = 40;
+    let offsetX = canvas.width / 2;
+    let offsetY = canvas.height / 2;
+    let points = [];
+    let newLineFlag = false;
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Cuadrícula
+      ctx.strokeStyle = "#ddd";
+      for (let x = 0; x < canvas.width; x += scale) {
+        ctx.beginPath();
+        ctx.moveTo(x + offsetX % scale, 0);
+        ctx.lineTo(x + offsetX % scale, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += scale) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + offsetY % scale);
+        ctx.lineTo(canvas.width, y + offsetY % scale);
+        ctx.stroke();
+      }
+
+      // Ejes
+      ctx.strokeStyle = "blue";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, offsetY);
+      ctx.lineTo(canvas.width, offsetY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(offsetX, 0);
+      ctx.lineTo(offsetX, canvas.height);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+
+      // Numeración
+      ctx.fillStyle = "black";
+      ctx.font = "12px Arial";
+      for (let x = -Math.floor(offsetX / scale); x < canvas.width / scale; x++) {
+        ctx.fillText(x, offsetX + x * scale + 2, offsetY + 12);
+      }
+      for (let y = -Math.floor(offsetY / scale); y < canvas.height / scale; y++) {
+        if (y !== 0) ctx.fillText(-y, offsetX + 4, offsetY + y * scale - 4);
+      }
+
+      // Dibujar puntos y trazos
+      ctx.strokeStyle = "green";
+      ctx.fillStyle = "red";
+      points.forEach((p, i) => {
+        const px = offsetX + p.x * scale;
+        const py = offsetY - p.y * scale;
+
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText(`(${p.x},${p.y})`, px + 5, py - 5);
+
+        if (i > 0 && !p.newLine) {
+          const prev = points[i - 1];
+          const prevX = offsetX + prev.x * scale;
+          const prevY = offsetY - prev.y * scale;
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+        }
+      });
+
+      // Marca de agua dentro del canvas
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+
+      const watermarkText = "⚡ Profe Digital Kwa";
+
+      // Original esquina superior izquierda
+      ctx.fillText(watermarkText, 10, 25);
+
+      // Posiciones centrales de cada cuadrante
+      const quadrants = [
+        { x: offsetX / 2, y: offsetY / 2 },                       // Q2: arriba-izquierda
+        { x: offsetX + (canvas.width - offsetX) / 2, y: offsetY / 2 },   // Q1: arriba-derecha
+        { x: offsetX / 2, y: offsetY + (canvas.height - offsetY) / 2 },  // Q3: abajo-izquierda
+        { x: offsetX + (canvas.width - offsetX) / 2, y: offsetY + (canvas.height - offsetY) / 2 } // Q4: abajo-derecha
+      ];
+
+      // Agregar tres marcas adicionales (dejando la original)
+      quadrants.forEach((q, i) => {
+        if(i !== 0) { // omitimos la esquina superior izquierda original
+          ctx.fillText(watermarkText, q.x - ctx.measureText(watermarkText).width / 2, q.y);
+        }
+      });
+    }
+
+    function addPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.round((event.clientX - rect.left - offsetX) / scale);
+      const y = Math.round((offsetY - (event.clientY - rect.top)) / scale);
+
+      points.push({ x, y, newLine: newLineFlag });
+      newLineFlag = false;
+      drawGrid();
+    }
+
+    function clearPoints() {
+      points = [];
+      drawGrid();
+    }
+
+    function undoPoint() {
+      points.pop();
+      drawGrid();
+    }
+
+    function newLine() {
+      newLineFlag = true;
+    }
+
+    function move(dx, dy) {
+      offsetX += dx;
+      offsetY += dy;
+      drawGrid();
+    }
+
+    function zoomIn() {
+      scale = Math.min(scale + 10, 100);
+      drawGrid();
+    }
+
+    function zoomOut() {
+      scale = Math.max(scale - 10, 20);
+      drawGrid();
+    }
+
+    canvas.addEventListener("click", addPoint);
+    drawGrid();
+  </script>
+</body>
+</html>

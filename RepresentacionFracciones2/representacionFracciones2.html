@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fracciones Impropias - Visualizador Animado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .pizza-slice {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: 50% 50%;
+        }
+        
+        .pizza-slice:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+        
+        .pizza-container {
+            transition: all 0.5s ease;
+        }
+        
+        .bar-segment {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .bar-segment:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        .control-button {
+            transition: all 0.2s ease;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(147, 51, 234, 0); }
+        }
+        
+        .improper-fraction {
+            animation: pulse-glow 2s infinite;
+        }
+        
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slide-in 0.6s ease-out;
+        }
+        
+        @keyframes bounce-in {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(1.05) rotate(5deg); }
+            70% { transform: scale(0.9) rotate(-2deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        .bounce-in {
+            animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .whole-number {
+            background: linear-gradient(45deg, #10B981, #059669);
+            color: white;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-weight: bold;
+        }
+        
+        .logo-container {
+            transition: all 0.3s ease;
+        }
+        
+        .logo-container:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .logo-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-900 to-purple-800 min-h-screen">
+    <div class="container mx-auto px-4 py-4">
+        <!-- Header -->
+        <div class="text-center mb-4 slide-in">
+            <h1 class="text-2xl font-bold text-white mb-3">🔢 Gráfica de Fracciones</h1>
+            
+            <!-- Watermark integrada en el encabezado -->
+            <div class="text-cyan-300 font-bold text-lg tracking-wide">
+                <span class="text-cyan-200">⚡</span> Profe Digital Kwa
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-4 slide-in">
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Numerador -->
+                <div class="text-center">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Numerador</label>
+                    <div class="flex items-center justify-center space-x-2">
+                        <button onclick="changeNumerator(-1)" class="control-button bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold text-sm">-</button>
+                        <span id="numerator-display" class="text-2xl font-bold text-purple-600 w-8 text-center">7</span>
+                        <button onclick="changeNumerator(1)" class="control-button bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-full font-bold text-sm">+</button>
+                    </div>
+                </div>
+                
+                <!-- Denominador -->
+                <div class="text-center">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Denominador</label>
+                    <div class="flex items-center justify-center space-x-2">
+                        <button onclick="changeDenominator(-1)" class="control-button bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold text-sm">-</button>
+                        <span id="denominator-display" class="text-2xl font-bold text-indigo-600 w-8 text-center">3</span>
+                        <button onclick="changeDenominator(1)" class="control-button bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-full font-bold text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Fraction Display -->
+            <div class="text-center mt-4">
+                <div class="inline-block bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-xl improper-fraction">
+                    <span class="text-2xl font-bold">
+                        <span id="fraction-numerator">7</span>
+                        <span class="mx-1">/</span>
+                        <span id="fraction-denominator">3</span>
+                    </span>
+                    <div class="text-xs mt-1 opacity-90" id="fraction-text">Fracción Impropia</div>
+                </div>
+                
+                <!-- Mixed Number Display -->
+                <div class="mt-3" id="mixed-number-container">
+                    <div class="text-sm text-gray-600 mb-1">Como número mixto:</div>
+                    <div class="inline-flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
+                        <span class="whole-number" id="whole-part">2</span>
+                        <span class="text-lg font-bold text-gray-700">
+                            <span id="remaining-numerator">1</span>
+                            <span>/</span>
+                            <span id="remaining-denominator">3</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizations -->
+        <div class="grid lg:grid-cols-2 gap-4">
+            <!-- Pizza Visualization -->
+            <div class="bg-white rounded-xl shadow-lg p-4 slide-in">
+                <h2 class="text-lg font-bold text-gray-800 mb-2 text-center">⭕ Gráfico Circular</h2>
+                <div id="pizzas-container" class="flex flex-wrap justify-center gap-2">
+                    <!-- Multiple pizzas will be generated here -->
+                </div>
+                <p class="text-center text-gray-600 mt-2 text-xs">Pizzas completas + fracción restante</p>
+            </div>
+
+            <!-- Bar Visualization -->
+            <div class="bg-white rounded-xl shadow-lg p-4 slide-in">
+                <h2 class="text-lg font-bold text-gray-800 mb-2 text-center">📦 Gráfico de Cajas</h2>
+                <div class="flex justify-center items-center h-32">
+                    <div class="w-full max-w-sm">
+                        <div id="bars-container" class="space-y-1">
+                            <!-- Multiple bars will be generated here -->
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-gray-500">
+                            <span>0</span>
+                            <span id="max-value">3 enteros</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-gray-600 mt-2 text-xs">Cada barra representa 1 entero</p>
+            </div>
+        </div>
+
+        <!-- Number Line Visualization -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mt-4 slide-in">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 text-center">📏 Recta Numérica</h2>
+            <div class="flex justify-center items-center">
+                <div class="w-full max-w-2xl">
+                    <div id="number-line-container" class="relative h-20">
+                        <!-- Number line will be generated here -->
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-gray-600 mt-2 text-xs">Ubicación exacta de la fracción en la recta</p>
+        </div>
+
+        <!-- Information Panel -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mt-4 slide-in">
+            <h3 class="text-lg font-bold text-gray-800 mb-3 text-center">📚 Información</h3>
+            <div class="grid grid-cols-4 gap-3">
+                <div class="bg-purple-50 p-3 rounded-lg text-center">
+                    <h4 class="font-semibold text-purple-800 text-xs">Decimal</h4>
+                    <p class="text-lg font-bold text-purple-600" id="decimal-value">2.333</p>
+                </div>
+                <div class="bg-orange-50 p-3 rounded-lg text-center">
+                    <h4 class="font-semibold text-orange-800 text-xs">Enteros</h4>
+                    <p class="text-lg font-bold text-orange-600" id="whole-count">2</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg text-center">
+                    <h4 class="font-semibold text-green-800 text-xs">Restante</h4>
+                    <p class="text-lg font-bold text-green-600" id="remainder-fraction">1/3</p>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-lg text-center">
+                    <h4 class="font-semibold text-indigo-800 text-xs">Tipo</h4>
+                    <p class="text-sm font-bold text-indigo-600" id="fraction-type">Impropia</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let numerator = 7;
+        let denominator = 3;
+
+        function updateDisplay() {
+            // Update fraction display
+            document.getElementById('numerator-display').textContent = numerator;
+            document.getElementById('denominator-display').textContent = denominator;
+            document.getElementById('fraction-numerator').textContent = numerator;
+            document.getElementById('fraction-denominator').textContent = denominator;
+            
+            // Calculate mixed number
+            const wholePart = Math.floor(numerator / denominator);
+            const remainderNumerator = numerator % denominator;
+            
+            // Update mixed number display
+            document.getElementById('whole-part').textContent = wholePart;
+            document.getElementById('remaining-numerator').textContent = remainderNumerator;
+            document.getElementById('remaining-denominator').textContent = denominator;
+            
+            // Update fraction type and text
+            let fractionType = 'Propia';
+            let fractionText = 'Fracción propia';
+            
+            if (numerator > denominator) {
+                fractionType = 'Impropia';
+                fractionText = 'Fracción Impropia';
+            } else if (numerator === denominator) {
+                fractionType = 'Igual a 1';
+                fractionText = 'Igual a un entero';
+            }
+            
+            document.getElementById('fraction-text').textContent = fractionText;
+            document.getElementById('fraction-type').textContent = fractionType;
+            
+            // Update decimal value
+            const decimalValue = (numerator / denominator).toFixed(3);
+            document.getElementById('decimal-value').textContent = decimalValue;
+            
+            // Update information panel
+            document.getElementById('whole-count').textContent = wholePart;
+            document.getElementById('remainder-fraction').textContent = remainderNumerator > 0 ? `${remainderNumerator}/${denominator}` : '0';
+            document.getElementById('max-value').textContent = `${Math.ceil(numerator / denominator)} enteros`;
+            
+            updatePizzas();
+            updateBars();
+            updateNumberLine();
+        }
+
+        function updatePizzas() {
+            const pizzasContainer = document.getElementById('pizzas-container');
+            pizzasContainer.innerHTML = '';
+            
+            const wholePizzas = Math.floor(numerator / denominator);
+            const remainingSlices = numerator % denominator;
+            
+            // Create whole pizzas
+            for (let p = 0; p < wholePizzas; p++) {
+                const pizzaDiv = document.createElement('div');
+                pizzaDiv.className = 'pizza-container bounce-in';
+                pizzaDiv.style.animationDelay = `${p * 0.1}s`;
+                
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '80');
+                svg.setAttribute('height', '80');
+                svg.setAttribute('viewBox', '0 0 80 80');
+                svg.classList.add('drop-shadow-md');
+                
+                // Pizza base - same green as complete bars
+                const baseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                baseCircle.setAttribute('cx', '40');
+                baseCircle.setAttribute('cy', '40');
+                baseCircle.setAttribute('r', '35');
+                baseCircle.setAttribute('fill', '#4ADE80');
+                baseCircle.setAttribute('stroke', '#16A34A');
+                baseCircle.setAttribute('stroke-width', '2');
+                
+                svg.appendChild(baseCircle);
+                
+                // Center dot
+                const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                centerDot.setAttribute('cx', '40');
+                centerDot.setAttribute('cy', '40');
+                centerDot.setAttribute('r', '3');
+                centerDot.setAttribute('fill', '#16A34A');
+                
+                svg.appendChild(centerDot);
+                
+                pizzaDiv.appendChild(svg);
+                
+                // Label
+                const label = document.createElement('div');
+                label.className = 'text-xs text-center mt-1 font-semibold text-green-600';
+                label.textContent = `Entero ${p + 1}`;
+                pizzaDiv.appendChild(label);
+                
+                pizzasContainer.appendChild(pizzaDiv);
+            }
+            
+            // Create partial pizza if there's a remainder
+            if (remainingSlices > 0) {
+                const pizzaDiv = document.createElement('div');
+                pizzaDiv.className = 'pizza-container bounce-in';
+                pizzaDiv.style.animationDelay = `${wholePizzas * 0.1}s`;
+                
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '80');
+                svg.setAttribute('height', '80');
+                svg.setAttribute('viewBox', '0 0 80 80');
+                svg.classList.add('drop-shadow-md');
+                
+                // Pizza base - light gray like empty bar segments
+                const baseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                baseCircle.setAttribute('cx', '40');
+                baseCircle.setAttribute('cy', '40');
+                baseCircle.setAttribute('r', '35');
+                baseCircle.setAttribute('fill', '#E5E7EB');
+                baseCircle.setAttribute('stroke', '#9CA3AF');
+                baseCircle.setAttribute('stroke-width', '2');
+                
+                svg.appendChild(baseCircle);
+                
+                // Create slices
+                const anglePerSlice = 360 / denominator;
+                
+                for (let i = 0; i < denominator; i++) {
+                    const startAngle = i * anglePerSlice - 90;
+                    const endAngle = (i + 1) * anglePerSlice - 90;
+                    
+                    const startAngleRad = (startAngle * Math.PI) / 180;
+                    const endAngleRad = (endAngle * Math.PI) / 180;
+                    
+                    const x1 = 40 + 35 * Math.cos(startAngleRad);
+                    const y1 = 40 + 35 * Math.sin(startAngleRad);
+                    const x2 = 40 + 35 * Math.cos(endAngleRad);
+                    const y2 = 40 + 35 * Math.sin(endAngleRad);
+                    
+                    const largeArcFlag = anglePerSlice > 180 ? 1 : 0;
+                    const pathData = `M 40 40 L ${x1} ${y1} A 35 35 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+                    
+                    const slice = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    slice.setAttribute('d', pathData);
+                    slice.setAttribute('class', 'pizza-slice');
+                    
+                    if (i < remainingSlices) {
+                        slice.setAttribute('fill', '#60A5FA');
+                        slice.setAttribute('stroke', '#1F2937');
+                    } else {
+                        slice.setAttribute('fill', '#E5E7EB');
+                        slice.setAttribute('stroke', '#1F2937');
+                    }
+                    slice.setAttribute('stroke-width', '2');
+                    
+                    svg.appendChild(slice);
+                }
+                
+                // Center dot
+                const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                centerDot.setAttribute('cx', '40');
+                centerDot.setAttribute('cy', '40');
+                centerDot.setAttribute('r', '3');
+                centerDot.setAttribute('fill', '#9CA3AF');
+                
+                svg.appendChild(centerDot);
+                
+                pizzaDiv.appendChild(svg);
+                
+                // Label
+                const label = document.createElement('div');
+                label.className = 'text-xs text-center mt-1 font-semibold text-blue-600';
+                label.textContent = `${remainingSlices}/${denominator}`;
+                pizzaDiv.appendChild(label);
+                
+                pizzasContainer.appendChild(pizzaDiv);
+            }
+        }
+
+        function updateBars() {
+            const barsContainer = document.getElementById('bars-container');
+            barsContainer.innerHTML = '';
+            
+            const totalBars = Math.ceil(numerator / denominator);
+            let remainingSegments = numerator;
+            
+            for (let barIndex = 0; barIndex < totalBars; barIndex++) {
+                const barDiv = document.createElement('div');
+                barDiv.className = 'flex border-2 border-gray-800 rounded-lg overflow-hidden h-8 shadow-inner bg-gray-50 mb-1';
+                
+                const segmentsInThisBar = Math.min(remainingSegments, denominator);
+                
+                for (let i = 0; i < denominator; i++) {
+                    const segment = document.createElement('div');
+                    segment.className = 'bar-segment h-full flex-1 border-r-2 border-gray-800 last:border-r-0';
+                    
+                    if (i < segmentsInThisBar) {
+                        if (barIndex < Math.floor(numerator / denominator)) {
+                            // Complete bars - green
+                            segment.classList.add('bg-gradient-to-b', 'from-green-400', 'to-green-600');
+                        } else {
+                            // Partial bar - blue
+                            segment.classList.add('bg-gradient-to-b', 'from-blue-400', 'to-blue-600');
+                        }
+                    } else {
+                        segment.classList.add('bg-gradient-to-b', 'from-gray-200', 'to-gray-300');
+                    }
+                    
+                    barDiv.appendChild(segment);
+                }
+                
+                barsContainer.appendChild(barDiv);
+                remainingSegments -= segmentsInThisBar;
+            }
+        }
+
+        function changeNumerator(delta) {
+            const newNumerator = numerator + delta;
+            if (newNumerator >= 1 && newNumerator <= 20) {
+                numerator = newNumerator;
+                updateDisplay();
+            }
+        }
+
+        function updateNumberLine() {
+            const numberLineContainer = document.getElementById('number-line-container');
+            numberLineContainer.innerHTML = '';
+            
+            const fractionValue = numerator / denominator;
+            const maxValue = Math.ceil(fractionValue) + 1;
+            
+            // Create SVG for number line
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '80');
+            svg.setAttribute('viewBox', '0 0 600 80');
+            svg.classList.add('drop-shadow-sm');
+            
+            // Main line
+            const mainLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            mainLine.setAttribute('x1', '50');
+            mainLine.setAttribute('y1', '40');
+            mainLine.setAttribute('x2', '550');
+            mainLine.setAttribute('y2', '40');
+            mainLine.setAttribute('stroke', '#374151');
+            mainLine.setAttribute('stroke-width', '3');
+            svg.appendChild(mainLine);
+            
+            // Create marks and labels for whole numbers
+            const lineWidth = 500; // from x=50 to x=550
+            const spacing = lineWidth / maxValue;
+            
+            for (let i = 0; i <= maxValue; i++) {
+                const x = 50 + (i * spacing);
+                
+                // Major tick mark
+                const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tick.setAttribute('x1', x);
+                tick.setAttribute('y1', '30');
+                tick.setAttribute('x2', x);
+                tick.setAttribute('y2', '50');
+                tick.setAttribute('stroke', '#374151');
+                tick.setAttribute('stroke-width', '2');
+                svg.appendChild(tick);
+                
+                // Number label
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x);
+                label.setAttribute('y', '65');
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('font-family', 'Inter, sans-serif');
+                label.setAttribute('font-size', '12');
+                label.setAttribute('font-weight', 'bold');
+                label.setAttribute('fill', '#374151');
+                label.textContent = i;
+                svg.appendChild(label);
+                
+                // Add subdivision marks for fractions (more visible)
+                if (i < maxValue) {
+                    for (let j = 1; j < denominator; j++) {
+                        const subX = x + (j * spacing / denominator);
+                        const subTick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        subTick.setAttribute('x1', subX);
+                        subTick.setAttribute('y1', '25');
+                        subTick.setAttribute('x2', subX);
+                        subTick.setAttribute('y2', '55');
+                        subTick.setAttribute('stroke', '#6366F1');
+                        subTick.setAttribute('stroke-width', '2');
+                        svg.appendChild(subTick);
+                        
+                        // Add fraction labels on subdivision marks
+                        const fractionText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        fractionText.setAttribute('x', subX);
+                        fractionText.setAttribute('y', '20');
+                        fractionText.setAttribute('text-anchor', 'middle');
+                        fractionText.setAttribute('font-family', 'Inter, sans-serif');
+                        fractionText.setAttribute('font-size', '8');
+                        fractionText.setAttribute('font-weight', '500');
+                        fractionText.setAttribute('fill', '#6366F1');
+                        fractionText.textContent = `${j}/${denominator}`;
+                        svg.appendChild(fractionText);
+                    }
+                }
+            }
+            
+            // Position of our fraction
+            const fractionX = 50 + (fractionValue * spacing);
+            
+            // Fraction point (animated)
+            const fractionPoint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            fractionPoint.setAttribute('cx', fractionX);
+            fractionPoint.setAttribute('cy', '40');
+            fractionPoint.setAttribute('r', '8');
+            fractionPoint.setAttribute('fill', '#EF4444');
+            fractionPoint.setAttribute('stroke', '#DC2626');
+            fractionPoint.setAttribute('stroke-width', '3');
+            fractionPoint.classList.add('bounce-in');
+            svg.appendChild(fractionPoint);
+            
+            // Fraction label with background
+            const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            labelBg.setAttribute('x', fractionX - 25);
+            labelBg.setAttribute('y', '5');
+            labelBg.setAttribute('width', '50');
+            labelBg.setAttribute('height', '20');
+            labelBg.setAttribute('fill', '#EF4444');
+            labelBg.setAttribute('stroke', '#DC2626');
+            labelBg.setAttribute('stroke-width', '1');
+            labelBg.setAttribute('rx', '10');
+            labelBg.classList.add('bounce-in');
+            svg.appendChild(labelBg);
+            
+            const fractionLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            fractionLabel.setAttribute('x', fractionX);
+            fractionLabel.setAttribute('y', '18');
+            fractionLabel.setAttribute('text-anchor', 'middle');
+            fractionLabel.setAttribute('font-family', 'Inter, sans-serif');
+            fractionLabel.setAttribute('font-size', '10');
+            fractionLabel.setAttribute('font-weight', 'bold');
+            fractionLabel.setAttribute('fill', 'white');
+            fractionLabel.textContent = `${numerator}/${denominator}`;
+            fractionLabel.classList.add('bounce-in');
+            svg.appendChild(fractionLabel);
+            
+            // Decimal value label
+            const decimalLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            decimalLabel.setAttribute('x', fractionX);
+            decimalLabel.setAttribute('y', '75');
+            decimalLabel.setAttribute('text-anchor', 'middle');
+            decimalLabel.setAttribute('font-family', 'Inter, sans-serif');
+            decimalLabel.setAttribute('font-size', '10');
+            decimalLabel.setAttribute('font-weight', '500');
+            decimalLabel.setAttribute('fill', '#6B7280');
+            decimalLabel.textContent = `≈ ${fractionValue.toFixed(2)}`;
+            decimalLabel.classList.add('bounce-in');
+            svg.appendChild(decimalLabel);
+            
+            numberLineContainer.appendChild(svg);
+        }
+
+        function changeDenominator(delta) {
+            const newDenominator = denominator + delta;
+            if (newDenominator >= 2 && newDenominator <= 8) {
+                denominator = newDenominator;
+                updateDisplay();
+            }
+        }
+
+
+
+        // Initialize display
+        updateDisplay();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'982de93f20d621b7',t:'MTc1ODUwMzMwNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
