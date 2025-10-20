@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador Interactivo de Poliedros</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+        :root {
+            --bg-gradient-start: #1f2937;
+            --bg-gradient-end: #111827;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --accent-color: #8b5cf6; 
+            --accent-rgb-val: 139, 92, 246;
+            --border-color: rgba(75, 85, 99, 0.5);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            width: 100%;
+            height: 100vh;
+            max-width: 1200px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        #top-ui-container, #controls-wrapper {
+            pointer-events: auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .header {
+            text-align: center;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--accent-color);
+            transition: color 0.3s ease;
+        }
+        
+        .header .brand {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary); /* Changed to brighter white */
+        }
+        
+        .header .brand .lightning {
+            color: #FFD700; /* Vibrant yellow/gold */
+            text-shadow: 0 0 6px #FFD700;
+        }
+
+        #info-card {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        #controls-wrapper {
+            padding-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        #slider-controls {
+            display: flex;
+            flex-direction: row;
+            gap: 2rem;
+            width: 100%;
+            max-width: 500px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1.5rem; /* Espacio añadido */
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            align-items: center;
+        }
+
+        .slider-container label {
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+            color: var(--text-secondary);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: rgba(17, 24, 39, 0.8);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            border: 2px solid var(--bg-gradient-end);
+            transition: background 0.3s ease;
+        }
+        
+        #bottom-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #action-buttons-container {
+            display: flex;
+            gap: 0.8rem;
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem;
+        }
+        
+        .poly-button {
+            background: linear-gradient(145deg, #374151, #111827);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .poly-button:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-color);
+        }
+        
+        .poly-button.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(var(--accent-rgb-val), 0.3);
+            background: var(--accent-color);
+            color: #111827;
+            border-color: var(--accent-color);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            #slider-controls { flex-direction: column; gap: 1rem;}
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="polyhedron-canvas"></canvas>
+    </div>
+
+    <div class="main-container">
+        <div id="top-ui-container">
+             <div class="header">
+                <h1 id="polyhedron-title">Tetraedro</h1>
+                <span class="brand"><span class="lightning">⚡</span> Profe Digital Kwa</span>
+            </div>
+            <div id="info-card">
+                <div class="stats-grid">
+                    <div class="stat-item"><span id="vertices-count" class="stat-value">4</span><span class="stat-label">Vértices</span></div>
+                    <div class="stat-item"><span id="faces-count" class="stat-value">4</span><span class="stat-label">Caras</span></div>
+                    <div class="stat-item"><span id="edges-count" class="stat-value">6</span><span class="stat-label">Aristas</span></div>
+                </div>
+            </div>
+            <div id="slider-controls">
+                 <div class="slider-container">
+                    <label for="rotateY">Rotación Horizontal</label>
+                    <input type="range" id="rotateY" min="-180" max="180" value="0">
+                </div>
+                <div class="slider-container">
+                    <label for="rotateX">Rotación Vertical</label>
+                    <input type="range" id="rotateX" min="-180" max="180" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div id="controls-wrapper">
+            <div id="bottom-controls">
+                <div id="action-buttons-container"></div>
+                <div id="controls"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.136';
+        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136/examples/jsm/controls/OrbitControls.js';
+
+        const polyhedra = [
+            { name: 'Tetraedro', vertices: 4, faces: 4, edges: 6, geometry: new THREE.TetrahedronGeometry(1.8), color: 0xFF1493 },
+            { name: 'Cubo', vertices: 8, faces: 6, edges: 12, geometry: new THREE.BoxGeometry(2.2, 2.2, 2.2), color: 0x00BFFF },
+            { name: 'Octaedro', vertices: 6, faces: 8, edges: 12, geometry: new THREE.OctahedronGeometry(2.0), color: 0x32cd32 },
+            { name: 'Dodecaedro', vertices: 20, faces: 12, edges: 30, geometry: new THREE.DodecahedronGeometry(2.0), color: 0x9370db },
+            { name: 'Icosaedro', vertices: 12, faces: 20, edges: 30, geometry: new THREE.IcosahedronGeometry(2.0), color: 0xffa500 },
+            { name: 'Prisma Triangular', vertices: 6, faces: 5, edges: 9, geometry: createPrismGeometry(3, 2.6, 1.4), color: 0x20b2aa },
+            { name: 'Prisma Cuadrangular', vertices: 8, faces: 6, edges: 12, geometry: createPrismGeometry(4, 2.6, 1.4), color: 0x6a5acd },
+            { name: 'Prisma Pentagonal', vertices: 10, faces: 7, edges: 15, geometry: createPrismGeometry(5, 2.4, 1.4), color: 0xff4500 },
+            { name: 'Prisma Hexagonal', vertices: 12, faces: 8, edges: 18, geometry: createPrismGeometry(6, 2.2, 1.4), color: 0x00ced1 },
+            { name: 'Prisma Heptagonal', vertices: 14, faces: 9, edges: 21, geometry: createPrismGeometry(7, 2.2, 1.4), color: 0xda70d6 },
+            { name: 'Prisma Octagonal', vertices: 16, faces: 10, edges: 24, geometry: createPrismGeometry(8, 2.2, 1.4), color: 0x1e90ff },
+            { name: 'Cilindro', vertices: '0', faces: '3', edges: '2', geometry: new THREE.CylinderGeometry(1.2, 1.2, 2.5, 32), color: 0x00ced1 },
+            { name: 'Cono', vertices: '1', faces: '2', edges: '1', geometry: new THREE.ConeGeometry(1.5, 2.5, 32), color: 0x32cd32 },
+            { name: 'Esfera', vertices: '0', faces: '1', edges: '0', geometry: new THREE.SphereGeometry(1.8, 32, 32), color: 0xFF1493 }
+        ];
+        
+        let currentPolyhedronGroup, scene, camera, renderer, controls, pauseButton, fillButton;
+        let activeIndex = 0;
+        let isTransparent = true;
+
+        const titleEl = document.getElementById('polyhedron-title'),
+              verticesEl = document.getElementById('vertices-count'),
+              facesEl = document.getElementById('faces-count'),
+              edgesEl = document.getElementById('edges-count'),
+              controlsContainer = document.getElementById('controls'),
+              actionButtonsContainer = document.getElementById('action-buttons-container'),
+              rotateYSlider = document.getElementById('rotateY'),
+              rotateXSlider = document.getElementById('rotateX');
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 8; 
+
+            const canvas = document.getElementById('polyhedron-canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setClearColor(0x000000, 0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const pointLight = new THREE.PointLight(0xffffff, 0.7);
+            pointLight.position.set(5, 10, 10);
+            scene.add(pointLight);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.8;
+            controls.enableZoom = false;
+            
+            createButtons();
+            createActionButtons();
+            setupSliders();
+            switchPolyhedron(0);
+
+            animate();
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function switchPolyhedron(index) {
+            if (currentPolyhedronGroup) {
+                scene.remove(currentPolyhedronGroup);
+                currentPolyhedronGroup.traverse(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+            }
+            
+            activeIndex = index;
+            const data = polyhedra[index];
+            isTransparent = true; // Reset to default
+
+            const color = new THREE.Color(data.color);
+            const hexColor = `#${color.getHexString()}`;
+            const rgbVal = `${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)}`;
+            document.documentElement.style.setProperty('--accent-color', hexColor);
+            document.documentElement.style.setProperty('--accent-rgb-val', rgbVal);
+            
+            const faceMaterial = new THREE.MeshStandardMaterial({
+                color: data.color, 
+                metalness: data.name === 'Esfera' ? 0.3 : 0.1, 
+                roughness: data.name === 'Esfera' ? 0.3 : 0.5,
+                transparent: isTransparent,
+                opacity: 0.75
+            });
+            
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xf9fafb });
+
+            currentPolyhedronGroup = new THREE.Group();
+            const mesh = new THREE.Mesh(data.geometry, faceMaterial);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(data.geometry, 15), lineMaterial);
+            
+            currentPolyhedronGroup.add(mesh);
+            if (data.name !== 'Esfera') {
+                currentPolyhedronGroup.add(edges);
+            }
+            scene.add(currentPolyhedronGroup);
+            
+            const verticalOffset = 0; 
+            currentPolyhedronGroup.position.y = verticalOffset;
+            controls.target.y = verticalOffset;
+
+            controls.autoRotate = true;
+            pauseButton.textContent = 'Pausar';
+            fillButton.textContent = 'Sólido';
+            rotateYSlider.value = 0;
+            rotateXSlider.value = 0;
+            currentPolyhedronGroup.rotation.set(0, 0, 0);
+
+            updateInfo(data);
+            updateActiveButton();
+        }
+
+        function createPrismGeometry(sides, height, radius) {
+            const shape = new THREE.Shape();
+            const angle = (Math.PI * 2) / sides;
+            shape.moveTo(radius * Math.cos(0), radius * Math.sin(0));
+            for (let i = 1; i <= sides; i++) {
+                shape.lineTo(radius * Math.cos(angle * i), radius * Math.sin(angle * i));
+            }
+            const extrudeSettings = { depth: height, bevelEnabled: false };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.center();
+            return geometry;
+        }
+        
+        function setupSliders() {
+            const handleSliderInput = () => {
+                if (controls.autoRotate) {
+                    controls.autoRotate = false;
+                    pauseButton.textContent = 'Reanudar';
+                }
+                if (currentPolyhedronGroup) {
+                    currentPolyhedronGroup.rotation.y = THREE.MathUtils.degToRad(parseFloat(rotateYSlider.value));
+                    currentPolyhedronGroup.rotation.x = THREE.MathUtils.degToRad(parseFloat(rotateXSlider.value));
+                }
+            };
+            rotateYSlider.addEventListener('input', handleSliderInput);
+            rotateXSlider.addEventListener('input', handleSliderInput);
+        }
+
+        function updateInfo(data) {
+            titleEl.textContent = data.name;
+            verticesEl.textContent = data.vertices;
+            facesEl.textContent = data.faces;
+            edgesEl.textContent = data.edges;
+        }
+
+        function createButtons() {
+            polyhedra.forEach((poly, index) => {
+                const button = document.createElement('button');
+                button.className = 'poly-button';
+                button.textContent = poly.name;
+                button.addEventListener('click', () => switchPolyhedron(index));
+                controlsContainer.appendChild(button);
+            });
+        }
+        
+        function createActionButtons() {
+            // Pause/Resume Button
+            pauseButton = document.createElement('button');
+            pauseButton.className = 'poly-button';
+            pauseButton.textContent = 'Pausar';
+            pauseButton.addEventListener('click', () => {
+                controls.autoRotate = !controls.autoRotate;
+                if(controls.autoRotate) {
+                    rotateYSlider.value = 0;
+                    rotateXSlider.value = 0;
+                    if(currentPolyhedronGroup) {
+                       currentPolyhedronGroup.rotation.set(0,0,0);
+                    }
+                }
+                pauseButton.textContent = controls.autoRotate ? 'Pausar' : 'Reanudar';
+            });
+            
+            // Fill Toggle Button
+            fillButton = document.createElement('button');
+            fillButton.className = 'poly-button';
+            fillButton.textContent = 'Sólido';
+            fillButton.addEventListener('click', () => {
+                isTransparent = !isTransparent;
+                if (currentPolyhedronGroup) {
+                    const faceMesh = currentPolyhedronGroup.children[0];
+                    if (faceMesh && faceMesh.isMesh) {
+                        faceMesh.material.transparent = isTransparent;
+                        faceMesh.material.opacity = isTransparent ? 0.75 : 1.0;
+                    }
+                }
+                fillButton.textContent = isTransparent ? 'Sólido' : 'Transparente';
+            });
+
+            actionButtonsContainer.appendChild(pauseButton);
+            actionButtonsContainer.appendChild(fillButton);
+        }
+
+        function updateActiveButton() {
+            const buttons = controlsContainer.querySelectorAll('.poly-button');
+            buttons.forEach((button, index) => {
+                button.classList.toggle('active', index === activeIndex);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
